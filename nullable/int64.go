@@ -6,7 +6,7 @@ import (
 
 type Int64 int64
 
-func (n *Int64) UnmarshalJSON(b []byte) (error) {
+func (n *Int64) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
 	}

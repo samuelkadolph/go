@@ -6,7 +6,7 @@ import (
 
 type Bool bool
 
-func (n *Bool) UnmarshalJSON(b []byte) (error) {
+func (n *Bool) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
 	}

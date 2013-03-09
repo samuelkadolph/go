@@ -6,7 +6,7 @@ import (
 
 type String string
 
-func (n *String) UnmarshalJSON(b []byte) (error) {
+func (n *String) UnmarshalJSON(b []byte) error {
 	if string(b) == "null" {
 		return nil
 	}

@@ -92,7 +92,7 @@ func (r *Room) Rename(name string) error {
 		Room Room `json:"room"`
 	}
 
-	wrapper.Room.Name = (n.String)(name)
+	wrapper.Room.Name = n.String(name)
 
 	return r.connection.put("/room/%d", r.ID, wrapper)
 }
@@ -102,7 +102,7 @@ func (r *Room) SetTopic(topic string) error {
 		Room Room `json:"room"`
 	}
 
-	wrapper.Room.Topic = (n.String)(topic)
+	wrapper.Room.Topic = n.String(topic)
 
 	return r.connection.put("/room/%d", r.ID, wrapper)
 }
@@ -117,6 +117,10 @@ func (r *Room) Sound(sound string) error {
 
 func (r *Room) Speak(message string) error {
 	return r.message(message, "TextMessage")
+}
+
+func (r *Room) Stream() (*Stream, error) {
+	return NewStream(r)
 }
 
 func (r *Room) Transcripts() ([]*Message, error) {
