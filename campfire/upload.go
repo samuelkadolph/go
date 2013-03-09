@@ -5,8 +5,8 @@ type Upload struct {
 	ContentType string `json:"content-type"`
 	CreatedAt   string `json:"created_at"`
 	FullURL     string `json:"full_url"`
-	ID          int    `json:"id"`
+	ID          int64  `json:"id"`
 	Name        string `json:"name"`
-	RoomID      int    `json:"room_id"`
-	UserID      int    `json:"user_id"`
+	RoomID      int64  `json:"room_id"`
+	UserID      int64  `json:"user_id"`
 }

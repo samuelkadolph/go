@@ -1,144 +1,123 @@
 package campfire
 
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
-)
-
 type Client struct {
 	Subdomain string
 	Token     string
 
-	http *http.Client
+	connection *connection
 }
 
-func NewClient(subdomain, token string) *Client {
-	return &Client{Subdomain: subdomain, Token: token, http: &http.Client{}}
+func NewClient(subdomain, token string, config Config) *Client {
+	return &Client{Subdomain: subdomain, Token: token, connection: newConnection(subdomain, token, config)}
 }
 
-func (c *Client) Account() (a *Account, err error) {
+func (c *Client) Account() (*Account, error) {
 	var wrapper struct {
 		Account Account `json:"account"`
 	}
-	if err = c.get("/account", nil, &wrapper); err != nil {
-		return
+
+	if err := c.connection.get("/account", &wrapper); err != nil {
+		return nil, err
 	}
-	a = &wrapper.Account
-	return
+
+	return &wrapper.Account, nil
 }
 
-func (c *Client) RoomByID(id int) (room *Room, err error) {
+func (c *Client) Me() (*User, error) {
+	var wrapper struct {
+		User User `json:"user"`
+	}
+
+	if err := c.connection.get("/users/me", &wrapper); err != nil {
+		return nil, err
+	}
+
+	return &wrapper.User, nil
+}
+
+func (c *Client) Presence() ([]*Room, error) {
+	return c.rooms("/presence")
+}
+
+func (c *Client) RoomByID(id int) (*Room, error) {
 	var wrapper struct {
 		Room Room `json:"room"`
 	}
-	if err = c.get(fmt.Sprintf("/room/%d", id), nil, &wrapper); err != nil {
-		return
+
+	if err := c.connection.get("/room/%d", id, &wrapper); err != nil {
+		return nil, err
 	}
-	room = &wrapper.Room
-	room.client = c
-	return
+
+	room := &wrapper.Room
+	room.connection = c.connection
+
+	return room, nil
 }
 
 func (c *Client) RoomByName(name string) (*Room, error) {
-	rooms, err := c.Rooms()
-	if err != nil {
+	if rooms, err := c.Rooms(); err != nil {
 		return nil, err
-	}
-	for _, room := range rooms {
-		if room.Name == name {
-			return room, nil
+	} else {
+		for _, r := range rooms {
+			if (string)(r.Name) == name {
+				return r, nil
+			}
 		}
 	}
+
 	return nil, nil
 }
 
-func (c *Client) Rooms() (rooms []*Room, err error) {
-	var wrapper struct {
-		Rooms []*Room
-	}
-	if err = c.get("/rooms", nil, &wrapper); err != nil {
-		return
-	}
-	for _, room := range wrapper.Rooms {
-		room.client = c
-		rooms = append(rooms, room)
-	}
-	return
+func (c *Client) Rooms() ([]*Room, error) {
+	return c.rooms("/rooms")
 }
 
-func (c *Client) Search(term string) (msgs []*Message, err error) {
+func (c *Client) Search(term string) ([]*Message, error) {
 	var wrapper struct {
 		Messages []*Message `json:"messages"`
 	}
-	if err = c.get("/search", map[string]string{"q": term}, &wrapper); err != nil {
-		return
-	}
-	for _, msg := range wrapper.Messages {
-		msg.client = c
-		msgs = append(msgs, msg)
-	}
-	return
-}
 
-func (c *Client) delete(path string, params map[string]string) error {
-	_, err := c.request("DELETE", path, params, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Client) get(path string, params map[string]string, v interface{}) error {
-	res, err := c.request("GET", path, params, nil)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	dec := json.NewDecoder(res.Body)
-	return dec.Decode(v)
-}
-
-func (c *Client) post(path string, v interface{}) error {
-	body, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	res, err := c.request("POST", path, nil, body)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	return nil
-}
-
-func (c *Client) request(method, path string, params map[string]string, body []byte) (*http.Response, error) {
-	u := &url.URL{}
-	u.Scheme = "https"
-	u.Host = c.Subdomain + ".campfirenow.com"
-	u.Path = path
-
-	var kvp []string
-	for key, value := range params {
-		kvp = append(kvp, fmt.Sprintf("%s=%s", url.QueryEscape(key), url.QueryEscape(value)))
-	}
-	u.RawQuery = strings.Join(kvp, "&")
-
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
-	if err != nil {
+	if err := c.connection.get("/search", map[string]string{"q": term}, &wrapper); err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Accept", "application/json")
-	req.SetBasicAuth(c.Token, "x")
+	msgs := make([]*Message, len(wrapper.Messages))
 
-	if body != nil {
-		req.ContentLength = int64(len(body))
-		req.Header.Add("Content-Type", "application/json")
+	for i, m := range wrapper.Messages {
+		msgs[i] = m
+		msgs[i].connection = c.connection
 	}
 
-	return c.http.Do(req)
+	return msgs, nil
+}
+
+func (c *Client) UserByID(id int) (*User, error) {
+	var wrapper struct {
+		User User `json:"user"`
+	}
+
+	if err := c.connection.get("/users/%d", id, &wrapper); err != nil {
+		return nil, err
+	}
+
+	return &wrapper.User, nil
+}
+
+func (c *Client) rooms(path string) ([]*Room, error) {
+	var wrapper struct {
+		Rooms []*Room `json:"rooms"`
+	}
+
+	if err := c.connection.get("/rooms", &wrapper); err != nil {
+		return nil, err
+	}
+
+	rooms := make([]*Room, len(wrapper.Rooms))
+
+	for i, r := range wrapper.Rooms {
+		rooms[i] = r
+		rooms[i].connection = c.connection
+	}
+
+	return rooms, nil
 }
