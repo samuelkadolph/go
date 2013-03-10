@@ -1,5 +1,5 @@
 REPO = github.com/samuelkadolph/go
-PACKAGES = campfire httpstream nullable
+PACKAGES = campfire httpstream nullable phidgets phidgets/raw
 
 SYMLINK = $(GOPATH)/src/$(REPO)
 FORMATS = $(addprefix fmt/$(REPO)/,$(PACKAGES))
