@@ -136,7 +136,7 @@ func popHash(a []interface{}) ([]interface{}, hash) {
 	if len(a) > 0 {
 		l := len(a) - 1
 		if m, ok := a[l].(map[string]string); ok {
-			h = (hash)(m)
+			h = hash(m)
 			a = a[:l]
 		}
 	}

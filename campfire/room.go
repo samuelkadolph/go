@@ -152,10 +152,10 @@ func (r *Room) message(b, t string) error {
 		Message Message `json:"message"`
 	}
 
-	wrapper.Message.Body = (n.String)(strings.Replace(b, "\n", "&#xA;", -1))
+	wrapper.Message.Body = n.String(strings.Replace(b, "\n", "&#xA;", -1))
 
 	if t != "" {
-		wrapper.Message.Type = (n.String)(t)
+		wrapper.Message.Type = n.String(t)
 	}
 
 	return r.connection.post("/room/%d/speak", r.ID, wrapper)

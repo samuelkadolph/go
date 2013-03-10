@@ -59,7 +59,7 @@ func (c *Client) RoomByName(name string) (*Room, error) {
 		return nil, err
 	} else {
 		for _, r := range rooms {
-			if (string)(r.Name) == name {
+			if string(r.Name) == name {
 				return r, nil
 			}
 		}
