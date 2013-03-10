@@ -1,5 +1,5 @@
 REPO = github.com/samuelkadolph/go
-PACKAGES = campfire nullable
+PACKAGES = campfire httpstream nullable
 
 SYMLINK = $(GOPATH)/src/$(REPO)
 FORMATS = $(addprefix fmt/$(REPO)/,$(PACKAGES))
