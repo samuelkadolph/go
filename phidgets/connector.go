@@ -8,9 +8,6 @@ type Connector interface {
 	Open(*Phidget) error
 }
 
-type Any struct {
-}
-
 type Label struct {
 	Label string
 }
@@ -45,9 +42,9 @@ type Serial struct {
 	Serial int
 }
 
-func (c Any) Open(p *Phidget) error {
-	return p.rawPhidget.Open(raw.Any)
-}
+var (
+	Any = Serial{raw.Any}
+)
 
 func (c Label) Open(p *Phidget) error {
 	return p.rawPhidget.OpenLabel(c.Label)
