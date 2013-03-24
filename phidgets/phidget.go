@@ -74,7 +74,11 @@ func (p *Phidget) Version() (int, error) {
 }
 
 func (p *Phidget) WaitForAttachment(timeout time.Duration) error {
-	return p.rawPhidget.WaitForAttachment(timeout)
+	err := p.rawPhidget.WaitForAttachment(timeout)
+	if err == nil && p.attached != nil {
+		p.attached()
+	}
+	return err
 }
 
 func (p *Phidget) initPhidget(r *raw.Phidget) error {
