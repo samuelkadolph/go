@@ -53,8 +53,47 @@ func NewInterfaceKit() (*InterfaceKit, error) {
 	return ifk, nil
 }
 
+func (i *InterfaceKit) Ratiometric() (bool, error) {
+	s, err := i.rawIFK.GetRatiometric()
+	return stateToBool(s), err
+}
+
+func (i *InterfaceKit) SetRatiometric(state bool) (error) {
+	return i.rawIFK.SetRatiometric(boolToState(state))
+}
+
+func (i *InterfaceKitInput) State() (bool, error) {
+	s, err := i.ifk.rawIFK.GetInputState(i.Index)
+	return stateToBool(s), err
+}
+
 func (o *InterfaceKitOutput) SetState(state bool) error {
 	return o.ifk.rawIFK.SetOutputState(o.Index, boolToState(state))
+}
+
+func (o *InterfaceKitOutput) State() (bool, error) {
+	s, err := o.ifk.rawIFK.GetOutputState(o.Index)
+	return stateToBool(s), err
+}
+
+func (s *InterfaceKitSensor) ChangeTrigger() (int, error) {
+	return s.ifk.rawIFK.GetSensorChangeTrigger(s.Index)
+}
+
+func (s *InterfaceKitSensor) DataRate() (int, error) {
+	return s.ifk.rawIFK.GetDataRate(s.Index)
+}
+
+func (s *InterfaceKitSensor) DataRateMax() (int, error) {
+	return s.ifk.rawIFK.GetDataRateMax(s.Index)
+}
+
+func (s *InterfaceKitSensor) DataRateMin() (int, error) {
+	return s.ifk.rawIFK.GetDataRateMin(s.Index)
+}
+
+func (s *InterfaceKitSensor) RawValue() (int, error) {
+	return s.ifk.rawIFK.GetSensorRawValue(s.Index)
 }
 
 func (s *InterfaceKitSensor) SetChangeTrigger(trigger int) error {
@@ -71,9 +110,20 @@ func (s *InterfaceKitSensor) Value() (int, error) {
 
 func boolToState(b bool) int {
 	if b {
-		return 1
+		return raw.True
 	}
-	return 0
+	return raw.False
+}
+
+func newInterfaceKitInput(n int, i *InterfaceKit) *InterfaceKitInput {
+	o := new(InterfaceKitInput)
+
+	o.changed = make(chan int)
+	o.Changed = o.changed
+	o.Index = n
+	o.ifk = i
+
+	return o
 }
 
 func newInterfaceKitOutput(n int, i *InterfaceKit) *InterfaceKitOutput {
@@ -98,7 +148,33 @@ func newInterfaceKitSensor(n int, i *InterfaceKit) *InterfaceKitSensor {
 	return s
 }
 
+func stateToBool(s int) bool {
+	if s == raw.True {
+		return true
+	}
+	return false
+}
+
 func (i *InterfaceKit) createInputs() {
+	if i.Inputs != nil {
+		return
+	}
+
+	c, err := i.rawIFK.GetInputCount()
+	if err != nil {
+		return
+	}
+
+	i.Inputs = make([]*InterfaceKitInput, c)
+	for n := 0; n < c; n++ {
+		i.Inputs[n] = newInterfaceKitInput(n, i)
+	}
+
+	go func() {
+		for c := range i.rawIFK.InputChanged {
+			i.Inputs[c.Index].changed <- c.Value
+		}
+	}()
 }
 
 func (i *InterfaceKit) createOutputs() {

@@ -15,6 +15,8 @@ import (
 
 const (
 	Any = -1
+	False = C.PFALSE
+	True = C.PTRUE
 )
 
 type Status int

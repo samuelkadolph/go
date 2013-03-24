@@ -44,6 +44,7 @@ type Serial struct {
 
 var (
 	Any = Serial{raw.Any}
+	Remote = RemoteSerial{raw.Any, "", ""}
 )
 
 func (c Label) Open(p *Phidget) error {
