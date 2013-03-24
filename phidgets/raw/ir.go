@@ -248,7 +248,7 @@ func (i *IR) setOnRawDataHandler(c chan IRRawData) error {
 			raw := IRRawData{}
 			raw.Data = []int{}
 
-			d := (*[1 << 30]int)(unsafe.Pointer(r.data))[:r.dataLength]
+			d := (*[2048]int)(unsafe.Pointer(r.data))[:r.dataLength]
 			for _, i := range d {
 				raw.Data = append(raw.Data, i)
 			}
