@@ -58,7 +58,7 @@ func (i *InterfaceKit) Ratiometric() (bool, error) {
 	return stateToBool(s), err
 }
 
-func (i *InterfaceKit) SetRatiometric(state bool) (error) {
+func (i *InterfaceKit) SetRatiometric(state bool) error {
 	return i.rawIFK.SetRatiometric(boolToState(state))
 }
 

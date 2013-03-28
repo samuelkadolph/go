@@ -29,3 +29,14 @@ int setOnChangeHandler(CPhidgetInterfaceKitHandle ifk, handler *h, onChangeType 
 			return CPhidgetInterfaceKit_set_OnSensorChange_Handler(ifk, &onChangeHandler, h);
 	}
 }
+
+void unsetOnChangeHandler(CPhidgetInterfaceKitHandle ifk, onChangeType t) {
+	switch (t) {
+		case inputChanged:
+			CPhidgetInterfaceKit_set_OnInputChange_Handler(ifk, NULL, NULL);
+		case outputChanged:
+			CPhidgetInterfaceKit_set_OnOutputChange_Handler(ifk, NULL, NULL);
+		case sensorChanged:
+			CPhidgetInterfaceKit_set_OnSensorChange_Handler(ifk, NULL, NULL);
+	}
+}

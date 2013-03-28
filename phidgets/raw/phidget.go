@@ -14,9 +14,11 @@ import (
 )
 
 const (
-	Any = -1
+	Any   = -1
 	False = C.PFALSE
-	True = C.PTRUE
+	True  = C.PTRUE
+
+	channelSize = 50
 )
 
 type Status int
@@ -280,21 +282,23 @@ func resultWithString(f func(**C.char) C.int) (string, error) {
 
 func (p *Phidget) cleanup() {
 	p.unsetOnErrorHandler()
-	p.unsetOnDisconnectHandler()
-	p.unsetOnDetachHandler()
-	p.unsetOnConnectHandler()
-	p.unsetOnAttachHandler()
+	p.unsetOnEventHandler(phidgetDisconnect, &p.onDisconnectHandler)
+	p.unsetOnEventHandler(phidgetDetach, &p.onDetachHandler)
+	p.unsetOnEventHandler(phidgetConnect, &p.onConnectHandler)
+	p.unsetOnEventHandler(phidgetAttach, &p.onAttachHandler)
 	C.CPhidget_delete(p.handle)
 }
 
 func (p *Phidget) initPhidget(h C.CPhidgetHandle) error {
+	var err error
+
 	p.handle = h
 
-	p.attached = make(chan bool)
-	p.connected = make(chan bool)
-	p.detached = make(chan bool)
-	p.disconnected = make(chan bool)
-	p.error = make(chan error)
+	p.attached = make(chan bool, channelSize)
+	p.connected = make(chan bool, channelSize)
+	p.detached = make(chan bool, channelSize)
+	p.disconnected = make(chan bool, channelSize)
+	p.error = make(chan error, channelSize)
 
 	p.Attached = p.attached
 	p.Connected = p.connected
@@ -302,74 +306,30 @@ func (p *Phidget) initPhidget(h C.CPhidgetHandle) error {
 	p.Disconnected = p.disconnected
 	p.Error = p.error
 
-	if err := p.setOnAttachHandler(p.attached); err != nil {
+	if p.onAttachHandler, err = p.setOnEventHandler(p.attached, phidgetAttach); err != nil {
 		return err
 	}
 
-	if err := p.setOnConnectHandler(p.connected); err != nil {
+	if p.onConnectHandler, err = p.setOnEventHandler(p.connected, phidgetConnect); err != nil {
 		return err
 	}
 
-	if err := p.setOnDetachHandler(p.detached); err != nil {
+	if p.onDetachHandler, err = p.setOnEventHandler(p.detached, phidgetDetach); err != nil {
 		return err
 	}
 
-	if err := p.setOnDisconnectHandler(p.detached); err != nil {
+	if p.onDisconnectHandler, err = p.setOnEventHandler(p.disconnected, phidgetDisconnect); err != nil {
 		return err
 	}
 
-	if err := p.setOnErrorHandler(p.error); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Phidget) setOnAttachHandler(c chan bool) error {
-	var err error
-
-	p.onAttachHandler, err = p.setOnEventHandler(c, phidgetAttach)
-	if err != nil {
+	if err := p.setOnErrorHandler(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Phidget) setOnConnectHandler(c chan bool) error {
-	var err error
-
-	p.onAttachHandler, err = p.setOnEventHandler(c, phidgetConnect)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Phidget) setOnDetachHandler(c chan bool) error {
-	var err error
-
-	p.onAttachHandler, err = p.setOnEventHandler(c, phidgetDetach)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Phidget) setOnDisconnectHandler(c chan bool) error {
-	var err error
-
-	p.onAttachHandler, err = p.setOnEventHandler(c, phidgetDisconnect)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Phidget) setOnErrorHandler(c chan error) error {
+func (p *Phidget) setOnErrorHandler() error {
 	var err error
 
 	p.onErrorHandler, err = createHandler(func(h *C.handler) C.int {
@@ -383,8 +343,13 @@ func (p *Phidget) setOnErrorHandler(c chan error) error {
 		for {
 			r := C.onErrorAwait(p.onErrorHandler)
 			e := errors.New(C.GoString(r.string))
+
 			C.onErrorResultFree(r)
-			c <- e
+
+			select {
+			case p.error <- e:
+			default:
+			}
 		}
 	}()
 
@@ -402,32 +367,14 @@ func (p *Phidget) setOnEventHandler(c chan bool, t eventType) (*C.handler, error
 	go func() {
 		for {
 			C.onEventAwait(h)
-			c <- true
+			select {
+			case c <- true:
+			default:
+			}
 		}
 	}()
 
 	return h, nil
-}
-
-func (p *Phidget) unsetOnAttachHandler() {
-	C.unsetOnEventHandler(p.handle, phidgetAttach)
-	C.handlerFree(p.onAttachHandler)
-	p.onAttachHandler = nil
-}
-func (p *Phidget) unsetOnConnectHandler() {
-	C.unsetOnEventHandler(p.handle, phidgetConnect)
-	C.handlerFree(p.onConnectHandler)
-	p.onConnectHandler = nil
-}
-func (p *Phidget) unsetOnDetachHandler() {
-	C.unsetOnEventHandler(p.handle, phidgetDetach)
-	C.handlerFree(p.onDetachHandler)
-	p.onDetachHandler = nil
-}
-func (p *Phidget) unsetOnDisconnectHandler() {
-	C.unsetOnEventHandler(p.handle, phidgetDisconnect)
-	C.handlerFree(p.onDisconnectHandler)
-	p.onDisconnectHandler = nil
 }
 
 func (p *Phidget) unsetOnErrorHandler() {
@@ -436,6 +383,8 @@ func (p *Phidget) unsetOnErrorHandler() {
 	p.onErrorHandler = nil
 }
 
-func (p *Phidget) unsetOnEventHandler(t eventType) {
+func (p *Phidget) unsetOnEventHandler(t eventType, h **C.handler) {
 	C.unsetOnEventHandler(p.handle, C.eventType(t))
+	C.handlerFree(*h)
+	*h = nil
 }

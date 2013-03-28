@@ -31,3 +31,6 @@ onRawDataResult * onRawDataAwait(handler *h);
 int setOnCodeHandler(CPhidgetIRHandle ir, handler *h);
 int setOnLearnHandler(CPhidgetIRHandle ir, handler *h);
 int setOnRawDataHandler(CPhidgetIRHandle ir, handler *h);
+void unsetOnCodeHandler(CPhidgetIRHandle ir);
+void unsetOnLearnHandler(CPhidgetIRHandle ir);
+void unsetOnRawDataHandler(CPhidgetIRHandle ir);

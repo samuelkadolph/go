@@ -18,3 +18,4 @@ void onChangeResultFree(onChangeResult *r);
 onChangeResult * onChangeAwait(handler *h);
 
 int setOnChangeHandler(CPhidgetInterfaceKitHandle ifk, handler *h, onChangeType t);
+void unsetOnChangeHandler(CPhidgetInterfaceKitHandle ifk, onChangeType t);

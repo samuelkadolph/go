@@ -22,7 +22,13 @@ type InterfaceKit struct {
 	OutputChanged <-chan InterfaceKitChange
 	SensorChanged <-chan InterfaceKitChange
 
-	ifkHandle C.CPhidgetInterfaceKitHandle
+	ifkHandle              C.CPhidgetInterfaceKitHandle
+	inputChanged           chan InterfaceKitChange
+	onInputChangedHandler  *C.handler
+	onOutputChangedHandler *C.handler
+	onSensorChangedHandler *C.handler
+	outputChanged          chan InterfaceKitChange
+	sensorChanged          chan InterfaceKitChange
 }
 
 type InterfaceKitChange struct {
@@ -111,47 +117,52 @@ func (i *InterfaceKit) SetSensorChangeTrigger(index, trigger int) error {
 }
 
 func (i *InterfaceKit) cleanupInterfaceKit() {
+	i.unsetOnChangeHandler(sensorChanged, &i.onSensorChangedHandler)
+	i.unsetOnChangeHandler(outputChanged, &i.onOutputChangedHandler)
+	i.unsetOnChangeHandler(inputChanged, &i.onInputChangedHandler)
 	i.cleanup()
 }
 
 func (i *InterfaceKit) initInterfaceKit(h C.CPhidgetInterfaceKitHandle) error {
+	var err error
+
 	runtime.SetFinalizer(i, func(i *InterfaceKit) { i.cleanupInterfaceKit() })
 
 	i.ifkHandle = h
 
-	if err := i.initPhidget(C.CPhidgetHandle(h)); err != nil {
+	if err = i.initPhidget(C.CPhidgetHandle(h)); err != nil {
 		return err
 	}
 
-	input := make(chan InterfaceKitChange)
-	output := make(chan InterfaceKitChange)
-	sensor := make(chan InterfaceKitChange)
+	i.inputChanged = make(chan InterfaceKitChange, channelSize)
+	i.outputChanged = make(chan InterfaceKitChange, channelSize)
+	i.sensorChanged = make(chan InterfaceKitChange, channelSize)
 
-	i.InputChanged = input
-	i.OutputChanged = output
-	i.SensorChanged = sensor
+	i.InputChanged = i.inputChanged
+	i.OutputChanged = i.outputChanged
+	i.SensorChanged = i.sensorChanged
 
-	if err := i.setOnChangeHandler(input, inputChanged); err != nil {
+	if i.onInputChangedHandler, err = i.setOnChangeHandler(i.inputChanged, inputChanged); err != nil {
 		return err
 	}
 
-	if err := i.setOnChangeHandler(output, outputChanged); err != nil {
+	if i.onOutputChangedHandler, err = i.setOnChangeHandler(i.outputChanged, outputChanged); err != nil {
 		return err
 	}
 
-	if err := i.setOnChangeHandler(sensor, sensorChanged); err != nil {
+	if i.onSensorChangedHandler, err = i.setOnChangeHandler(i.sensorChanged, sensorChanged); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (i *InterfaceKit) setOnChangeHandler(c chan InterfaceKitChange, t onChangeType) error {
+func (i *InterfaceKit) setOnChangeHandler(c chan InterfaceKitChange, t onChangeType) (*C.handler, error) {
 	h, err := createHandler(func(h *C.handler) C.int {
 		return C.setOnChangeHandler(i.ifkHandle, h, C.onChangeType(t))
 	})
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	go func() {
@@ -164,9 +175,18 @@ func (i *InterfaceKit) setOnChangeHandler(c chan InterfaceKitChange, t onChangeT
 
 			C.onChangeResultFree(r)
 
-			c <- change
+			select {
+			case c <- change:
+			default:
+			}
 		}
 	}()
 
-	return nil
+	return h, nil
+}
+
+func (i *InterfaceKit) unsetOnChangeHandler(t onChangeType, h **C.handler) {
+	C.unsetOnChangeHandler(i.ifkHandle, C.onChangeType(t))
+	C.handlerFree(*h)
+	*h = nil
 }

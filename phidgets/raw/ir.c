@@ -5,10 +5,12 @@ void onCodeResultFree(onCodeResult *r) {
   free(r->data);
   free(r);
 }
+
 void onLearnResultFree(onLearnResult *r) {
   free(r->data);
   free(r);
 }
+
 void onRawDataResultFree(onRawDataResult *r) {
   free(r->data);
   free(r);
@@ -17,9 +19,11 @@ void onRawDataResultFree(onRawDataResult *r) {
 onCodeResult * onCodeAwait(handler *h) {
   return (onCodeResult *)handlerAwait(h);
 }
+
 onLearnResult * onLearnAwait(handler *h) {
   return (onLearnResult *)handlerAwait(h);
 }
+
 onRawDataResult * onRawDataAwait(handler *h) {
   return (onRawDataResult *)handlerAwait(h);
 }
@@ -37,6 +41,7 @@ int onCodeHandler(CPhidgetIRHandle ir, void *ptr, unsigned char *data, int dataL
 
   return 0;
 }
+
 int onLearnHandler(CPhidgetIRHandle ir, void *ptr, unsigned char *data, int dataLength, CPhidgetIR_CodeInfoHandle codeInfo) {
   handler * h = (handler *)ptr;
 
@@ -49,6 +54,7 @@ int onLearnHandler(CPhidgetIRHandle ir, void *ptr, unsigned char *data, int data
 
   return 0;
 }
+
 int onRawDataHandler(CPhidgetIRHandle ir, void *ptr, int *data, int dataLength) {
   handler * h = (handler *)ptr;
 
@@ -64,9 +70,23 @@ int onRawDataHandler(CPhidgetIRHandle ir, void *ptr, int *data, int dataLength) 
 int setOnCodeHandler(CPhidgetIRHandle ir, handler *h) {
   return CPhidgetIR_set_OnCode_Handler(ir, &onCodeHandler, h);
 }
+
 int setOnLearnHandler(CPhidgetIRHandle ir, handler *h) {
   return CPhidgetIR_set_OnLearn_Handler(ir, &onLearnHandler, h);
 }
+
 int setOnRawDataHandler(CPhidgetIRHandle ir, handler *h) {
   return CPhidgetIR_set_OnRawData_Handler(ir, &onRawDataHandler, h);
+}
+
+void unsetOnCodeHandler(CPhidgetIRHandle ir) {
+  CPhidgetIR_set_OnCode_Handler(ir, NULL, NULL);
+}
+
+void unsetOnLearnHandler(CPhidgetIRHandle ir) {
+  CPhidgetIR_set_OnLearn_Handler(ir, NULL, NULL);
+}
+
+void unsetOnRawDataHandler(CPhidgetIRHandle ir) {
+  CPhidgetIR_set_OnRawData_Handler(ir, NULL, NULL);
 }

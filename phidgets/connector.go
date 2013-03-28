@@ -43,7 +43,7 @@ type Serial struct {
 }
 
 var (
-	Any = Serial{raw.Any}
+	Any    = Serial{raw.Any}
 	Remote = RemoteSerial{raw.Any, "", ""}
 )
 

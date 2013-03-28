@@ -15,7 +15,13 @@ type IR struct {
 	Learn   <-chan IRLearn
 	RawData <-chan IRRawData
 
-	irHandle C.CPhidgetIRHandle
+	code             chan IRCode
+	irHandle         C.CPhidgetIRHandle
+	learn            chan IRLearn
+	onCodeHandler    *C.handler
+	onLearnHandler   *C.handler
+	onRawDataHandler *C.handler
+	rawData          chan IRRawData
 }
 
 type IRCode struct {
@@ -147,6 +153,9 @@ func irCodeInfoFromC(ci C.CPhidgetIR_CodeInfoHandle) IRCodeInfo {
 }
 
 func (i *IR) cleanupIR() {
+	i.unsetOnRawDataHandler()
+	i.unsetOnLearnHandler()
+	i.unsetOnCodeHandler()
 	i.cleanup()
 }
 
@@ -159,31 +168,33 @@ func (i *IR) initIR(h C.CPhidgetIRHandle) error {
 		return nil
 	}
 
-	code := make(chan IRCode)
-	learn := make(chan IRLearn)
-	raw := make(chan IRRawData)
+	i.code = make(chan IRCode, channelSize)
+	i.learn = make(chan IRLearn, channelSize)
+	i.rawData = make(chan IRRawData, channelSize)
 
-	i.Code = code
-	i.Learn = learn
-	i.RawData = raw
+	i.Code = i.code
+	i.Learn = i.learn
+	i.RawData = i.rawData
 
-	if err := i.setOnCodeHandler(code); err != nil {
+	if err := i.setOnCodeHandler(); err != nil {
 		return err
 	}
 
-	if err := i.setOnLearnHandler(learn); err != nil {
+	if err := i.setOnLearnHandler(); err != nil {
 		return err
 	}
 
-	if err := i.setOnRawDataHandler(raw); err != nil {
+	if err := i.setOnRawDataHandler(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (i *IR) setOnCodeHandler(c chan IRCode) error {
-	h, err := createHandler(func(h *C.handler) C.int {
+func (i *IR) setOnCodeHandler() error {
+	var err error
+
+	i.onLearnHandler, err = createHandler(func(h *C.handler) C.int {
 		return C.setOnCodeHandler(i.irHandle, h)
 	})
 	if err != nil {
@@ -192,7 +203,7 @@ func (i *IR) setOnCodeHandler(c chan IRCode) error {
 
 	go func() {
 		for {
-			r := C.onCodeAwait(h)
+			r := C.onCodeAwait(i.onLearnHandler)
 
 			code := IRCode{}
 			code.Data = C.GoBytes(unsafe.Pointer(r.data), r.dataLength)
@@ -201,15 +212,20 @@ func (i *IR) setOnCodeHandler(c chan IRCode) error {
 
 			C.onCodeResultFree(r)
 
-			c <- code
+			select {
+			case i.code <- code:
+			default:
+			}
 		}
 	}()
 
 	return nil
 }
 
-func (i *IR) setOnLearnHandler(c chan IRLearn) error {
-	h, err := createHandler(func(h *C.handler) C.int {
+func (i *IR) setOnLearnHandler() error {
+	var err error
+
+	i.onCodeHandler, err = createHandler(func(h *C.handler) C.int {
 		return C.setOnLearnHandler(i.irHandle, h)
 	})
 	if err != nil {
@@ -218,7 +234,7 @@ func (i *IR) setOnLearnHandler(c chan IRLearn) error {
 
 	go func() {
 		for {
-			r := C.onLearnAwait(h)
+			r := C.onLearnAwait(i.onCodeHandler)
 
 			learn := IRLearn{}
 			learn.Data = C.GoBytes(unsafe.Pointer(r.data), r.dataLength)
@@ -226,15 +242,20 @@ func (i *IR) setOnLearnHandler(c chan IRLearn) error {
 
 			C.onLearnResultFree(r)
 
-			c <- learn
+			select {
+			case i.learn <- learn:
+			default:
+			}
 		}
 	}()
 
 	return nil
 }
 
-func (i *IR) setOnRawDataHandler(c chan IRRawData) error {
-	h, err := createHandler(func(h *C.handler) C.int {
+func (i *IR) setOnRawDataHandler() error {
+	var err error
+
+	i.onRawDataHandler, err = createHandler(func(h *C.handler) C.int {
 		return C.setOnRawDataHandler(i.irHandle, h)
 	})
 	if err != nil {
@@ -243,7 +264,7 @@ func (i *IR) setOnRawDataHandler(c chan IRRawData) error {
 
 	go func() {
 		for {
-			r := C.onRawDataAwait(h)
+			r := C.onRawDataAwait(i.onRawDataHandler)
 
 			raw := IRRawData{}
 			raw.Data = []int{}
@@ -255,7 +276,10 @@ func (i *IR) setOnRawDataHandler(c chan IRRawData) error {
 
 			C.onRawDataResultFree(r)
 
-			c <- raw
+			select {
+			case i.rawData <- raw:
+			default:
+			}
 		}
 	}()
 
@@ -268,4 +292,22 @@ func (i *IRCodeInfo) toC() C.CPhidgetIR_CodeInfoHandle {
 	ci.bitCount = C.int(i.BitCount)
 
 	return ci
+}
+
+func (i *IR) unsetOnCodeHandler() {
+	C.unsetOnCodeHandler(i.handle)
+	C.handlerFree(i.onCodeHandler)
+	i.onCodeHandler = nil
+}
+
+func (i *IR) unsetOnLearnHandler() {
+	C.unsetOnCodeHandler(i.handle)
+	C.handlerFree(i.onLearnHandler)
+	i.onLearnHandler = nil
+}
+
+func (i *IR) unsetOnRawDataHandler() {
+	C.unsetOnCodeHandler(i.handle)
+	C.handlerFree(i.onRawDataHandler)
+	i.onRawDataHandler = nil
 }

@@ -16,5 +16,7 @@ typedef struct handler {
 handler * newHandler();
 
 void handlerAppendResult(handler *h, void *r);
+
 void * handlerAwait(handler *h);
+
 void handlerFree(handler *h);
