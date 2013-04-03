@@ -1,18 +1,28 @@
+GO = go
+
 REPO = github.com/samuelkadolph/go
-PACKAGES = campfire httpstream nullable phidgets phidgets/raw
+PACKAGES = campfire httpstream mpg123 nullable phidgets phidgets/raw
 
+FORMATS = $(addprefix fmt/,$(PACKAGES))
 SYMLINK = $(GOPATH)/src/$(REPO)
-FORMATS = $(addprefix fmt/$(REPO)/,$(PACKAGES))
+TESTS = $(addprefix test/,$(PACKAGES))
 
-all: ls
+all: fmt test
 
 fmt: $(FORMATS)
 
 fmt/%: ln
-	go fmt $*
+	$(GO) fmt $(REPO)/$*
 
 ln: $(SYMLINK)
+
+test: $(TESTS)
+
+test/%: %
+	$(GO) test $(REPO)/$*
 
 $(SYMLINK):
 	mkdir -p "$(dir $@)"
 	ln -fs "$(CURDIR)" "$@"
+
+.PHONY: all fmt ln test
