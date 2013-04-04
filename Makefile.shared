@@ -1,0 +1,11 @@
+PACKAGE = $(notdir $(CURDIR))
+
+all: ln fmt test
+
+fmt: fmt/$(PACKAGE)
+
+test: test/$(PACKAGE)
+
+.PHONY: all fmt test
+
+include ../Makefile.common

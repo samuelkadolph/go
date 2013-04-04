@@ -1,0 +1,19 @@
+GO = go
+
+REPO = github.com/samuelkadolph/go
+SYMLINK = $(GOPATH)/src/$(REPO)
+TOP = $(dir $(lastword $(MAKEFILE_LIST)))
+
+fmt/%: $(TOP)/% ln
+	$(GO) fmt $(REPO)/$*
+
+ln: $(SYMLINK)
+
+test/%: $(TOP)/%
+	$(GO) test $(REPO)/$*
+
+$(SYMLINK):
+	mkdir -p "$(dir $@)"
+	ln -fs "$(CURDIR)" "$@"
+
+.PHONY: ln

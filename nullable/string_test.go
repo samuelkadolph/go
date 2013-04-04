@@ -7,17 +7,17 @@ import (
 
 func TestStringUnmarshalJSON(t *testing.T) {
 	var c struct {
-		S String
+		V String
 	}
 	var err error
 
-	b := []byte(`{"S":null}`)
+	b := []byte(`{"V":null}`)
 
 	if err = json.Unmarshal(b, &c); err != nil {
 		t.Error(err)
 	}
 
-	if c.S != "" {
+	if c.V != "" {
 		t.Errorf("null did not unmarshal into empty string")
 	}
 }

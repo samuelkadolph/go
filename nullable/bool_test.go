@@ -7,17 +7,17 @@ import (
 
 func TestBoolUnmarshalJSON(t *testing.T) {
 	var c struct {
-		B Bool
+		V Bool
 	}
 	var err error
 
-	b := []byte(`{"B":null}`)
+	b := []byte(`{"V":null}`)
 
 	if err = json.Unmarshal(b, &c); err != nil {
 		t.Error(err)
 	}
 
-	if c.B != false {
+	if c.V != false {
 		t.Errorf("null did not unmarshal into false")
 	}
 }

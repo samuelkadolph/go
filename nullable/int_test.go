@@ -7,17 +7,17 @@ import (
 
 func TestIntUnmarshalJSON(t *testing.T) {
 	var c struct {
-		I Int
+		V Int
 	}
 	var err error
 
-	b := []byte(`{"I":null}`)
+	b := []byte(`{"V":null}`)
 
 	if err = json.Unmarshal(b, &c); err != nil {
 		t.Error(err)
 	}
 
-	if c.I != 0 {
+	if c.V != 0 {
 		t.Errorf("null did not unmarshal into 0")
 	}
 }
