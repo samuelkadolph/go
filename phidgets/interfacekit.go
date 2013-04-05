@@ -118,7 +118,7 @@ func boolToState(b bool) int {
 func newInterfaceKitInput(n int, i *InterfaceKit) *InterfaceKitInput {
 	o := new(InterfaceKitInput)
 
-	o.changed = make(chan int)
+	o.changed = make(chan int, channelSize)
 	o.Changed = o.changed
 	o.Index = n
 	o.ifk = i
@@ -129,7 +129,7 @@ func newInterfaceKitInput(n int, i *InterfaceKit) *InterfaceKitInput {
 func newInterfaceKitOutput(n int, i *InterfaceKit) *InterfaceKitOutput {
 	o := new(InterfaceKitOutput)
 
-	o.changed = make(chan int)
+	o.changed = make(chan int, channelSize)
 	o.Changed = o.changed
 	o.Index = n
 	o.ifk = i
@@ -140,7 +140,7 @@ func newInterfaceKitOutput(n int, i *InterfaceKit) *InterfaceKitOutput {
 func newInterfaceKitSensor(n int, i *InterfaceKit) *InterfaceKitSensor {
 	s := new(InterfaceKitSensor)
 
-	s.changed = make(chan int)
+	s.changed = make(chan int, channelSize)
 	s.Changed = s.changed
 	s.Index = n
 	s.ifk = i
@@ -172,7 +172,10 @@ func (i *InterfaceKit) createInputs() {
 
 	go func() {
 		for c := range i.rawIFK.InputChanged {
-			i.Inputs[c.Index].changed <- c.Value
+			select {
+			case i.Inputs[c.Index].changed <- c.Value:
+			default:
+			}
 		}
 	}()
 }
@@ -194,7 +197,10 @@ func (i *InterfaceKit) createOutputs() {
 
 	go func() {
 		for c := range i.rawIFK.OutputChanged {
-			i.Outputs[c.Index].changed <- c.Value
+			select {
+			case i.Outputs[c.Index].changed <- c.Value:
+			default:
+			}
 		}
 	}()
 }
@@ -216,7 +222,10 @@ func (i *InterfaceKit) createSensors() {
 
 	go func() {
 		for c := range i.rawIFK.SensorChanged {
-			i.Sensors[c.Index].changed <- c.Value
+			select {
+			case i.Sensors[c.Index].changed <- c.Value:
+			default:
+			}
 		}
 	}()
 }

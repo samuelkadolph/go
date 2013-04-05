@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	channelSize = 50
+)
+
 type Phidget struct {
 	Attached     <-chan bool
 	Connected    <-chan bool

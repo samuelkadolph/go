@@ -32,7 +32,10 @@ void handlerAppendResult(handler *h, void *r) {
 
 void * handlerAwait(handler *h) {
 	pthread_mutex_lock(&h->mutex);
-	pthread_cond_wait(&h->cond, &h->mutex);
+
+	while (h->head == NULL) {
+		pthread_cond_wait(&h->cond, &h->mutex);
+	}
 
 	handlerNode * n = h->head;
 	h->head = n->next;
